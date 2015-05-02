@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- RSVP -->
+    <script src="rsvp.min.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://cdn.firebase.com/js/client/2.2.3/firebase.js"></script>
+
+    <!-- GeoFire -->
+    <script src="https://cdn.firebase.com/libs/geofire/3.2.2/geofire.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+      // Create all the required Firebase references
+      var rootRef = new Firebase("https://geofire-demo.firebaseio.com");
+      var restaurantsRef = rootRef.child("restaurants");
+      var geoFireRef = rootRef.child("_geofire");
+
+      // Grab our existing GeoFire index
+      var geoFire = new GeoFire(geoFireRef);
+
+      // Keep track of our GeoQuery on subsequent requests
+      var geoQuery;
+
+      var getNearbyRestaurants = function() {
+        // Cancel the previous GeoQuery, if it exists, and clear the log
+        if (geoQuery) {
+          geoQuery.cancel();
+          clearLog();
+        }
+
+        // Get the latitude and longitude values from their respective inputs
+        var latitude = parseFloat(document.getElementById("latitude").value);
+        var longitude = parseFloat(document.getElementById("longitude").value);
+
+        // Create a new GeoQuery centered at the provided location and with a 5km radius
+        geoQuery = geoFire.query({
+          radius: 100,
+          center: [latitude, longitude]
+        });
+
+        // Listen for restaurants which enter our query
+        geoQuery.on("key_entered", function(key, location, distance) {
+          distance = distance.toFixed(1);
+          console.log('key:', key);
+          restaurantsRef.child(key).once("value", function(restaurantSnapshot) {
+            var restaurant = restaurantSnapshot.val();
+            console.log('restaurant:', restaurant);
+            addToLog(restaurant.name + ", " + restaurant.city + " (" + distance + " km) " + restaurant.price);
+          });
+        });
+      }
+
+      var addToLog = function(message) {
+        var log = document.getElementById("log");
+        var logEntry = document.createTextNode(message);
+        log.appendChild(logEntry);
+      }
+
+      var clearLog = function() {
+        var log = document.getElementById("log");
+        log.innerHTML = "";
+      }
+    </script>
+
+    <style>
+      input:invalid {
+        border-color: red;
+      }
+    </style>
+  </head>
+
+  <body>
+    <label>Latitude:</label>
+    <input id="latitude" type="number" step="0.01" value="latitude" required />
+
+    <br />
+
+    <label>Longitude:</label>
+    <input id="longitude" type="number" step="0.01" value="longitude" required />
+
+    <br />
+
+    <input type="button" value="Get Restaurants!" onclick="getNearbyRestaurants()" />
+
+    <br />
+
+    <div id="log">
+    </div>
+  </body>
+</html>
